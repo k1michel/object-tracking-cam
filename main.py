@@ -1,17 +1,23 @@
 import cv2
 import numpy as np
-'''
-from machine import Pin, PWM
-import utime
-'''
-'''
-pwm.setPWMFreq(50)
-pwm.setServoPosition(0, 90)
-'''
-cap = cv2.VideoCapture(0)
+import sys
+import time
+import serial
 
+cap = cv2.VideoCapture(0)
+ser = serial.Serial("/dev/serial0", baudrate=9600)
+
+'''
 cap.set(3, 480)
 cap.set(4, 320)
+'''
+
+codec = 0x47504A4D  # MJPG
+cap.set(cv2.CAP_PROP_FPS, 30.0)
+cap.set(cv2.CAP_PROP_FOURCC, codec)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 320)
+cap.set(cv2.CAP_PROP_AUTOFOCUS,0)
 
 _, frame = cap.read()
 rows, cols, _ = frame.shape
@@ -22,7 +28,7 @@ position = 90 # degrees
 while True:
     _, frame = cap.read()
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    
+    cv2.imwrite('/home/pi/object-tracking-cam/1.jpg', frame,[cv2.IMWRITE_JPEG_QUALITY,100])
     # red color
     low_red = np.array([161, 155, 84])
     high_red = np.array([179, 255, 255])
@@ -52,7 +58,21 @@ while True:
     elif x_medium > center + 30:
         position -= 1.5
         
-    #pwm.setServoPosition(0, position)
-    
+    try:
+        while True:
+            #giro_terminal = input('Indroducir angulo de giro:\n')
+            giro_envio = position.encode()
+            ser.write(giro_envio)
+            ser.flush()
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\nInterrupcion por teclado")
+    except ValueError as ve:
+        print(ve)
+        print("Otra interrupcion")
+    finally:
+        ser.close()
+
 cap.release()
 cv2.destroyAllWindows()
